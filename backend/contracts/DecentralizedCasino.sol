@@ -1,66 +1,82 @@
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.7;
 
-contract DecentralizedCasino {
-    uint256 public entryFee = 0.01 ether;
-    uint256 public constant MAX_NUMBER = 36;
-    uint256 public currentRound;
-    mapping(uint256 => mapping(address => uint256)) public playerBets;
-    mapping(uint256 => address[]) public roundParticipants;
-    mapping(uint256 => uint256) public roundToWinningNumber;
+import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 
-    event RoundEnded(uint256 round, uint256 winningNumber);
+contract DecentralizedCasino is VRFConsumerBase {
+    uint256 public constant ENTRY_FEE = 0.01 ether;
+    uint256 public constant NUMBER_RANGE = 36;
+    address payable[] public players;
+    mapping(address => uint256) public playerGuesses;
+    uint256 public gameStart;
+    uint256 public bettingDuration = 5 minutes;
+    bool public gameEnded = false;
+    bytes32 internal keyHash;
+    uint256 internal fee;
+    uint256 public randomResult;
 
-    constructor() {
-        currentRound = 1;
+    event GameStarted(uint256 duration);
+    event PlayerEntered(address player, uint256 guess);
+    event GameEnded(uint256 winningNumber);
+
+    constructor(address _vrfCoordinator, address _linkToken, bytes32 _keyHash, uint256 _fee)
+        VRFConsumerBase(_vrfCoordinator, _linkToken) {
+        keyHash = _keyHash;
+        fee = _fee;
     }
 
-    function enterGame(uint256 guessedNumber) external payable {
-        require(msg.value == entryFee, "Incorrect entry fee");
-        require(guessedNumber >= 1 && guessedNumber <= MAX_NUMBER, "Number out of bounds");
-        playerBets[currentRound][msg.sender] = guessedNumber;
-        roundParticipants[currentRound].push(msg.sender);
+    function startGame() public {
+        require(gameEnded, "Previous game has not ended yet.");
+        gameStart = block.timestamp;
+        gameEnded = false;
+        emit GameStarted(bettingDuration);
     }
 
-    function generateRandomNumber(uint256 round) private view returns (uint256) {
-        return uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, roundParticipants[round])));
+    function enterGame(uint256 guess) public payable {
+        require(msg.value == ENTRY_FEE, "Incorrect entry fee");
+        require(guess >= 1 && guess <= NUMBER_RANGE, "Guess out of range");
+        require(block.timestamp <= gameStart + bettingDuration, "Betting period has ended");
+        players.push(payable(msg.sender));
+        playerGuesses[msg.sender] = guess;
+        emit PlayerEntered(msg.sender, guess);
     }
 
-    // function which is used after winnings are distributed in order to clear context for new round
-    function endRound() external {
-        uint256 winningNumber = generateRandomNumber(currentRound) % MAX_NUMBER + 1;
-        roundToWinningNumber[currentRound] = winningNumber;
-        distributeWinnings(currentRound, winningNumber);
-
-        // Increment currentRound here to move to the next round
-        currentRound++;
-        
-        emit RoundEnded(currentRound, winningNumber);
+    function endGame() public {
+        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK");
+        require(block.timestamp > gameStart + bettingDuration, "Betting period has not ended");
+        require(!gameEnded, "Game already ended");
+        requestRandomness(keyHash, fee);
     }
 
-    function distributeWinnings(uint256 round, uint256 winningNumber) private {
-        address[] memory participants = roundParticipants[round];
+    function fulfillRandomness(bytes32 /* requestId */, uint256 randomness) internal override {
+        randomResult = randomness % NUMBER_RANGE + 1;
+        distributeWinnings();
+        gameEnded = true;
+        emit GameEnded(randomResult);
+    }
+
+    function distributeWinnings() private {
         uint256 winnerCount = 0;
-        uint256 totalBet = address(this).balance;
+        uint256 totalReward = address(this).balance;
 
-        // Calculate winners and distribute winnings
-        for (uint i = 0; i < participants.length; i++) {
-            if (playerBets[round][participants[i]] == winningNumber) {
+        // Determine the number of winners
+        for (uint256 i = 0; i < players.length; i++) {
+            if (playerGuesses[players[i]] == randomResult) {
                 winnerCount++;
             }
         }
 
+        // Split the pot between the winners
         if (winnerCount > 0) {
-            uint256 winningAmount = totalBet / winnerCount;
-            for (uint i = 0; i < participants.length; i++) {
-                if (playerBets[round][participants[i]] == winningNumber) {
-                    payable(participants[i]).transfer(winningAmount);
+            uint256 winnerShare = totalReward / winnerCount;
+            for (uint256 i = 0; i < players.length; i++) {
+                if (playerGuesses[players[i]] == randomResult) {
+                    payable(players[i]).transfer(winnerShare);
                 }
             }
         }
 
-        // Reset for the next round, if necessary
+        // Reset for the next game
+        delete players;
     }
-
-    // Additional functions as needed
 }
-
