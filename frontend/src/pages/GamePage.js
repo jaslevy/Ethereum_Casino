@@ -1,6 +1,7 @@
 import { React, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Logo from '../images/Group 1.png'
+import './styles/GamePage.css'
 
 function GamePage() {
 
@@ -14,6 +15,11 @@ function GamePage() {
     localStorage.removeItem('isConnected'); // Clear connection flag
     navigate('/'); // Navigate back to the LoginPage
   };
+
+  const handleAbout = () => {
+    navigate('/');
+  }
+
 
   const [selectedButtons, setSelectedButtons] = useState([]);
   const generateOrderedNumbers = () => {
@@ -46,8 +52,16 @@ function GamePage() {
 
   return (
     
-    <div className="flex flex-col items-center min-h-screen bg-white-100 mt-20">
-      <img src={Logo} alt="Group 1" className="w-2/3 md:w-1/2 lg:w-1/3 mt-8 mb-4"  /> {/* Adjust margin-top and max-width */}
+    <div className="flex flex-col items-center min-h-screen bg-white-100 mt-3">
+      <nav className="flex justify-between items-center w-full p-2 bg-white shadow-md"> {/* Reduced padding for shorter navbar */}
+        <div className="flex items-center mb-3 mx-3"> {/* Wrapper div for title and Log Out button */}
+          <span className="text-xl font-semibold mr-4">Sepolia Roulette</span>
+          <button className="py-1 px-3 mx-2 text-black bg-transparent hover:bg-gray-100 rounded text-md" onClick={handleLogout}>Sign out</button>
+          <button className="py-1 px-3 mx-2 text-black bg-transparent hover:bg-gray-100 rounded text-md" onClick={handleAbout}>About</button>
+        </div>
+        {/* If there's anything else to be placed on the right side, it goes here */}
+      </nav>
+      <img src={Logo} alt="Group 1" className="w-2/3 md:w-1/2 lg:w-1/3 mt-20 mb-4"  /> {/* Adjust margin-top and max-width */}
         {/* Current Game Data Section */}
             <div className="mb-8">
                 <h2>Current Game Data</h2>
@@ -56,14 +70,14 @@ function GamePage() {
         {/* Additional Selectable Buttons */}
         <div className="flex justify-center gap-2 mb-4 mt-5">
             <button
-            className={`btn shadow-lg font-bold text-white bg-green-500 rounded-2xl w-20 h-12 ${selectedButton === 'extra-1' ? 'ring-4 bg-black ring-cyan-500/50' : ''}`}
-            onClick={() => toggleButton('extra-1')}
+            className={`btn shadow-lg font-bold text-white bg-green-500 rounded-2xl w-20 h-12 ${selectedButton === 'extra-1' ? 'ring-4 ring-cyan-200/100' : ''}`}
+            onClick={() => toggleOneButton('extra-1')}
             >
             0
             </button>
             <button
-            className={`btn shadow-lg font-bold text-white bg-green-500 rounded-2xl w-20 h-12 ${selectedButton === 'extra-2' ? 'ring-4 bg-black ring-cyan-500/50' : ''}`}
-            onClick={() => toggleButton('extra-2')}
+            className={`btn shadow-lg font-bold text-white bg-green-500 rounded-2xl w-20 h-12 ${selectedButton === 'extra-2' ? 'ring-4 ring-cyan-200/100' : ''}`}
+            onClick={() => toggleOneButton('extra-2')}
             >
             00
             </button>
@@ -113,8 +127,17 @@ function GamePage() {
           </button>
         </div>
       </div>
-      <button onClick={handleLogout}>Logout</button>
+      <div className="text-center mb-8 mt-8">
+        <button
+          className="submit-button"
+          onClick={() => {/* Handle submit bet logic here */}}
+        >
+          Submit Bet
+        </button>
     </div>
+      
+    </div>
+    
 
   );
 }
