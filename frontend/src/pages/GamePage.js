@@ -84,7 +84,7 @@ function GamePage() {
       {/* Betting Table */}
       <div className="w-full max-w-2xl px-8 py-4 bg-white rounded-lg shadow-lg">
         <div className="flex justify-between mb-4">
-          <input type="number" placeholder="Bet Amount" className="input input-bordered w-full max-w-xs mr-4 rounded-full text-lg" />
+          <input type="number" placeholder=" Bet Amount (Wei)" className="input input-bordered w-full max-w-xs mr-4 rounded-sm text-lg" />
           {['1st 12', '2nd 12', '3rd 12'].map((id) => (
             <button key={id} className={`btn font-bold text-lg text-white ${isButtonSelected(id) ? 'bg-purple-700' : 'bg-purple-500'} flex-1 mx-2 rounded-full shadow-lg transform hover:translate-y-1 transition-transform duration-150 ease-in-out`} onClick={() => toggleButton(id)}>
               {id}
