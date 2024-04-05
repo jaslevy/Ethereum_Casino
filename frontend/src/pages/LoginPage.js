@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Web3 from 'web3';
-import Logo from './images/Group 1.png'
+import Logo from '../images/Group 1.png'
 
 
 function LoginPage() {
@@ -18,8 +18,8 @@ function LoginPage() {
         // Check if any accounts are already connected
         const accounts = await window.ethereum.request({ method: 'eth_accounts' });
         if (accounts.length > 0) {
-          // If an account is connected, navigate to the HomePage
-          navigate('/home');
+          // If an account is connected, navigate to the GamePage
+          navigate('/game');
         }
       } else {
         alert("MetaMask is not installed. Please consider installing it.");
@@ -33,7 +33,7 @@ function LoginPage() {
     try {
       await window.ethereum.request({ method: 'eth_requestAccounts' });
       localStorage.setItem('isConnected', 'true'); // Store connection flag
-      navigate('/home');
+      navigate('/game');
     } catch (error) {
       console.error(error);
     }

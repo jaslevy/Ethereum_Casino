@@ -1,7 +1,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import LoginPage from './LoginPage'; // Adjust the import path as necessary
-import HomePage from './HomePage'; // Adjust the import path as necessary
+import LoginPage from './pages/LoginPage.js'; 
+import HomePage from './pages/HomePage.js'; 
+import GamePage from './pages/GamePage.js';
 import ProtectedRoute from './components/ProtectedRoute.js'; // Import ProtectedRoute
 
 function App() {
@@ -9,7 +10,9 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<LoginPage />} />
-        <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+        <Route path="/game" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
+        <Route path="/home" element={<HomePage />} />
+
       </Routes>
     </Router>
   );
