@@ -1,25 +1,11 @@
-import { React, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Logo from '../images/Group 1.png'
+import { React, useState, useEffect } from 'react';
+import Logo from '../images/Group 1.png';
+import NavBar from '../components/NavBar'
 import './styles/GamePage.css'
 
 function GamePage() {
 
-  let navigate = useNavigate();
-
   const [selectedButton, setSelectedButton] = useState(null);
-
-
-  const handleLogout = () => {
-    // Perform logout logic here
-    localStorage.removeItem('isConnected'); // Clear connection flag
-    navigate('/'); // Navigate back to the LoginPage
-  };
-
-  const handleAbout = () => {
-    navigate('/');
-  }
-
 
   const [selectedButtons, setSelectedButtons] = useState([]);
   const generateOrderedNumbers = () => {
@@ -48,25 +34,64 @@ function GamePage() {
 
   const isButtonSelected = (buttonId) => selectedButtons.includes(buttonId);
   
+  const [countdown, setCountdown] = useState(120);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCountdown((prevCountdown) => {
+        if (prevCountdown > 0) return prevCountdown - 1;
+        return 120; // Reset to 2 minutes after reaching 0
+      });
+    }, 1000); // Update every second
+
+    // Pause for 5 seconds at 0 before resetting
+    if (countdown === 0) {
+      clearInterval(interval); // Stop the countdown
+      setTimeout(() => {
+        setCountdown(120); // Reset to 2 minutes after a 5-second pause
+      }, 5000); // 5-second pause
+    }
+
+    return () => clearInterval(interval); // Cleanup interval on component unmount
+  }, [countdown]);
+
+  // Format countdown to display as mm:ss
+  const formatCountdown = () => {
+    const minutes = Math.floor(countdown / 60);
+    const seconds = countdown % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
 
 
   return (
     
     <div className="flex flex-col items-center min-h-screen bg-white-100 mt-3">
-      <nav className="flex justify-between items-center w-full p-2 bg-white shadow-md"> {/* Reduced padding for shorter navbar */}
-        <div className="flex items-center mb-3 mx-3"> {/* Wrapper div for title and Log Out button */}
-          <span className="text-xl font-semibold mr-4">Sepolia Roulette</span>
-          <button className="py-1 px-3 mx-2 text-black bg-transparent hover:bg-gray-100 rounded text-md" onClick={handleLogout}>Sign out</button>
-          <button className="py-1 px-3 mx-2 text-black bg-transparent hover:bg-gray-100 rounded text-md" onClick={handleAbout}>About</button>
-        </div>
-        {/* If there's anything else to be placed on the right side, it goes here */}
-      </nav>
+      <NavBar />
       <img src={Logo} alt="Group 1" className="w-2/3 md:w-1/2 lg:w-1/3 mt-20 mb-4"  /> {/* Adjust margin-top and max-width */}
         {/* Current Game Data Section */}
-            <div className="mb-8">
-                <h2>Current Game Data</h2>
-                {/* Display current game data here */}
-            </div>
+        <div className="mb-8">
+          <div className="overflow-x-auto mt-5">
+          <table className="table-auto w-full text-center whitespace-no-wrap">
+              <thead>
+                <tr className="text-sm font-semibold tracking-wide text-gray-900 bg-gray-100 uppercase border-b border-gray-600">
+                  <th className="px-4 py-3">Current Game Number</th>
+                  <th className="px-4 py-3">Previous Game Winner(s)</th>
+                  <th className="px-4 py-3">Time Until Next Spin</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-300">
+                <tr className="text-gray-700">
+                  <td className="px-4 py-3 border">123</td>
+                  <td className="px-4 py-3 border text-blue-500 hover:text-blue-600">
+                    0xd8...b3f9 {/* Fake wallet address */}
+                  </td>
+                  <td className="px-4 py-3 border">{formatCountdown()}</td>
+                </tr>
+                {/* Additional rows as needed */}
+              </tbody>
+            </table>
+          </div>
+        </div>
         {/* Additional Selectable Buttons */}
         <div className="flex justify-center gap-2 mb-4 mt-5">
             <button
