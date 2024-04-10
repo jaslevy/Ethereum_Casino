@@ -2,176 +2,195 @@
 pragma solidity ^0.8.7;
 
 contract DecentralizedCasino {
-    uint256 public constant ENTRY_FEE = 0.01 ether;
-    uint256 public constant MAX_NUMBER = 38;
-    address payable[] public players;
-    mapping(address => uint256) public playerGuesses;
-    uint256 public gameStart;
-    uint256 public bettingDuration = 2 minutes;
-    bool public gameEnded = false;
-    uint256 public randomResult;
 
-    event GameStarted(uint256 duration);
-    event PlayerEntered(address player, uint256 guess);
-    event GameEnded(uint256 winningNumber, address[] winners);
-    event RandomNumberGenerated(uint256 indexed randomNumber);
+    address public owner;
 
-    struct Bet {
-        address bettor;
-        uint256 amount;
-        uint8 betType; // 0 for number, 1 for color, 2 for even/odd, etc.
-        uint8 choice; // specific number chosen or 0 for red, 1 for black in color bet, etc.
-    }
+    uint256 public constant STAKE_VALUE = 1;
+    uint8 public constant MAX_NUMBER = 48;
 
-    Bet[] public bets;
+    // These need to be private so that other bettors can't see what others are doing
+    mapping(uint8 => address payable[]) private betMap;
+    mapping(address => uint8[]) private addressMap;
+    address payable[] private addressesStakedInRound;
+
+    bool public gameOngoing = false;
     uint256 public currentGameId;
+    uint256 public currentGameUnlockTime;
 
-    // Events
-    event BetPlaced(address indexed bettor, uint256 amount, uint8 betType, uint8 choice);
-    event SpinResult(uint256 indexed gameId, uint8 result);
-    event Payout(address indexed bettor, uint256 amount);
+    event GameStarted(uint256 indexed gameId, uint256 unlockTime);
+    event GameEnded(uint256 indexed gameId, uint8 number, uint256 endTime); // Do we want to include payout and bet information?
 
-    constructor(address _rngAddress) {
-        rng = RandomNumberGenerator(_rngAddress);
+    constructor() {
         owner = msg.sender;
     }
 
-    function placeBet(uint256 amount, uint8 betType, uint8 choice) external payable {
-        require(msg.value == amount, "Send the correct amount of ETH");
-
-        bets.push(Bet({
-            bettor: msg.sender,
-            amount: amount,
-            betType: betType,
-            choice: choice
-        }));
-
-        emit BetPlaced(msg.sender, amount, betType, choice);
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only the contract owner can call this function");
+        _;
     }
 
-    function spinWheel() external {
-        require(msg.sender == owner, "Only the owner can spin the wheel");
-        bytes32 requestId = rng.requestRandomNumber();
-        uint8 result = uint8(rng.getRandomNumber(requestId) % 38); // Number 0-37, 37 represents '00'
+    function placeBet(uint8 choice) external payable {
+        require(gameOngoing, "Game is not currently ongoing");
+        require(msg.value == STAKE_VALUE, "Send the correct stake amount");
+
+        betMap[choice].push(payable(msg.sender));
+        addressMap[msg.sender].push(choice);
+        addressesStakedInRound.push(payable(msg.sender));
+    }
+
+    function startGame(uint256 unlockTime) external onlyOwner {
+        require(!gameOngoing, "Another game is ongoing currently");
+
+        gameOngoing = true;
+        currentGameUnlockTime = unlockTime;
         currentGameId++;
+        emit GameStarted(unlockTime, currentGameId);
+    }
 
-        for (uint i = 0; i < bets.length; i++) {
-            uint256 payout = calculatePayout(bets[i], result);
-            if (payout > 0) {
-                payable(bets[i].bettor).transfer(payout);
-                emit Payout(bets[i].bettor, payout);
+    function getNumberCorrespondence(uint8 gameWinningValue, uint8 i) private pure returns (uint8) {
+        uint8 numberCorrespondence = gameWinningValue;
+        if (i == 1) {
+            if (gameWinningValue <= 12) {
+                numberCorrespondence = 37;
+            } else if (gameWinningValue <= 24) {
+                numberCorrespondence = 38;
+            } else {
+                numberCorrespondence = 39;
+            }
+        } else if (i == 2) {
+            if (gameWinningValue <= 18) {
+                numberCorrespondence = 40;
+            } else {
+                numberCorrespondence = 41;
+            }
+        } else if (i == 3) {
+            if (gameWinningValue % 2 == 0) {
+                numberCorrespondence = 42;
+            } else {
+                numberCorrespondence = 43;
+            }
+        } else if (i == 4) {
+            if (gameWinningValue % 2 == 0 && ((gameWinningValue >= 20 && gameWinningValue <= 28) || gameWinningValue <= 10)) {
+                // Black even
+                numberCorrespondence = 45;
+            } else if (gameWinningValue % 2 == 1 && ((gameWinningValue >= 11 && gameWinningValue <= 17) || gameWinningValue >= 29)) {
+                // Black odd
+                numberCorrespondence = 45;
+            } else {
+                // Red
+                numberCorrespondence = 44;
+            }
+        } else if (i == 5) {
+            if (gameWinningValue % 3 == 0) {
+                // Top row
+                numberCorrespondence = 46;
+            } else if (gameWinningValue % 3 == 1) {
+                // Middle row
+                numberCorrespondence = 47;
+            } else {
+                // Bottom row
+                numberCorrespondence = 48;
             }
         }
-
-        // Reset the bets for the next game
-        delete bets;
-
-        emit SpinResult(currentGameId, result);
+        return numberCorrespondence;
     }
 
-    function calculatePayout(Bet memory bet, uint8 result) private pure returns (uint256) {
-        // Implement payout calculation logic based on bet type and result
-        // ...
-    }
-    
-    // Add funds to contract
-    function deposit() external payable {
-        require(msg.sender == owner, "Only the owner can add funds");
-    }
+    function endGame() external onlyOwner {
+        require(gameOngoing, "No game is underway");
+        uint8 gameWinningValue = 36; // placeholder for now
+        require(gameWinningValue <= MAX_NUMBER && gameWinningValue >= 1);
 
-    // Withdraw funds from contract
-    function withdraw(uint256 amount) external {
-        require(msg.sender == owner, "Only the owner can withdraw funds");
-        require(address(this).balance >= amount, "Insufficient balance");
-        payable(owner).transfer(amount);
-    }
+        // do we need safe math?
+        uint256 v = address(this).balance;        
 
-    // Additional functions to handle bet logic, random number callback, etc.
-    // ...
-}
-This is a simplified and conceptual version. In a real-world smart contract, you would need to ensure security practices, handle errors more gracefully, and ensure that the random number generation is tamper-proof and fair. Since Ethereum transactions are public, you would need to handle the revelation of the random number in such a way that it cannot be exploited. You might also want to add a function to allow players to withdraw their bets if they change their minds
-
-
-
-
-
-
-
-Continue
-
-    function startGame() public {
-        require(gameEnded, "Previous game has not ended yet.");
-        gameStart = block.timestamp;
-        gameEnded = false;
-        emit GameStarted(bettingDuration);
-    }
-
-    function enterGame(uint256 guess) public payable {
-        require(msg.value == ENTRY_FEE, "Incorrect entry fee");
-        require(guess >= 1 && guess <= MAX_NUMBER, "Guess out of range");
-        require(block.timestamp <= gameStart + bettingDuration, "Betting period has ended");
-        players.push(payable(msg.sender));
-        playerGuesses[msg.sender] = guess;
-        emit PlayerEntered(msg.sender, guess);
-    }
-
-    function endGame() public {
-        require(block.timestamp > gameStart + bettingDuration, "Betting period has not ended");
-        require(!gameEnded, "Game already ended");
-        gameEnded = true;
-        randomResult = generateRandomNumber();
-        distributeWinnings();
-        emit GameEnded(randomResult);
-    }
-
-    function generateRandomNumber() private returns (uint256 randomNumber) {
-        randomNumber = (uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender))) % MAX_NUMBER) + 1;
-        emit RandomNumberGenerated(randomNumber); 
-        return randomNumber;
-    }
-
-    function distributeWinnings() private {
-        uint256 winnerCount = 0;
-        // Reserve an amount for gas costs. Adjust this value as needed.
-        uint256 gasReserve = 0.01 ether;
-        uint256 totalReward = address(this).balance - gasReserve;
-
-        // Determine the number of winners
-        for (uint256 i = 0; i < players.length; i++) {
-            if (playerGuesses[players[i]] == randomResult) {
-                winnerCount++;
-            }
+        uint256 divisor = 0;
+        // Set weights for different bet odds, multiply by 2 to avoid working with floats for the 1.5 coefficients
+        for (uint8 i = 0; i < 6; i++) {
+            uint8 betToCheck = getNumberCorrespondence(gameWinningValue, i);
+            uint8 multiplier = 2;
+            if (i == 0) {
+                multiplier = 36;
+            } else if (i == 1 || i == 5) {
+                multiplier = 3;
+            } 
+            divisor += multiplier * betMap[betToCheck].length;
         }
 
-        // Split the pot between the winners, ensuring there's enough left for gas
-        if (winnerCount > 0 && totalReward > 0) {
-            uint256 winnerShare = totalReward / winnerCount;
-            for (uint256 i = 0; i < players.length; i++) {
-                if (playerGuesses[players[i]] == randomResult) {
-                    payable(players[i]).transfer(winnerShare);
+        if (divisor == 0) {
+            // Nobody wins
+            for (uint256 i = 0; i < addressesStakedInRound.length; i++) {
+                payout(addressesStakedInRound[i], STAKE_VALUE);
+            }
+        } else {
+            uint256 unit = 2 * v / divisor;
+            for (uint8 i = 0; i < 6; i++) {
+                uint8 betToCheck = getNumberCorrespondence(gameWinningValue, i);
+                uint256 payoutVal = 0;
+
+                if (i == 0) {
+                    // Correct number
+                    payoutVal = unit * 18;
+                } else if (i == 1 || i == 5) {
+                    // Correct 1/3-interval or row
+                    payoutVal = 3 * v / divisor;
+                } else { //i > 3
+                    // Correct 1/2-interval, even/odd, or red/black
+                    payoutVal = unit;
+                }
+
+                for (uint256 j = 0; j < betMap[betToCheck].length; j++) {
+                    payout(betMap[betToCheck][j], payoutVal);
                 }
             }
         }
 
-        // Reset for the next game
-        delete players;
-        gameEnded = true;
+        emit GameEnded(currentGameId, gameWinningValue, block.timestamp);
+
+        // Clear the bet mapping involved in the current round
+        for (uint8 i = 0; i < 256; i++) {
+            delete betMap[i];
+        }
+
+        // Clear the mapping of addresses involved in the current round
+        for (uint i = 0; i < addressesStakedInRound.length; i++) {
+            delete addressMap[addressesStakedInRound[i]];
+        }
+
+        delete addressesStakedInRound;
+        gameOngoing = false;
     }
 
-    function getWinningPlayers() public view returns (address[] memory) {
-        address[] memory winners = new address[](players.length);
-        uint256 count = 0;
-        for (uint256 i = 0; i < players.length; i++) {
-            if (playerGuesses[players[i]] == randomResult) {
-                winners[count] = players[i];
-                count++;
+    function payout(address payable receiver, uint256 value) private {
+        receiver.transfer(value);
+    }
+
+    function withdrawStake() external {
+        // It is OK for this to cost a lot of gas since it should not be triggered if server behaves honestly
+        require(block.timestamp > currentGameUnlockTime, "Too early to withdraw stake, game hasn't unlocked");
+        require(addressMap[msg.sender].length > 0, "No bets placed");
+
+        uint256 withdrawAmount = 0;
+        for (uint256 i = 0; i < addressMap[msg.sender].length; i++) {
+            // Iterate over all of their bets to calculate how much to reimburse them with, while deleting their bets in the process
+            uint8 bet = addressMap[msg.sender][i];
+            uint256 j = 0;
+
+            while (j < betMap[bet].length) {
+                if (betMap[bet][j] == msg.sender) {
+                    // Found one of their bets, remove it
+                    betMap[bet][j] = betMap[bet][betMap[bet].length-1];
+                    betMap[bet].pop();
+                    withdrawAmount += STAKE_VALUE;
+                } else {
+                    j++;
+                }
             }
         }
-        // Create a new array with the exact size of winners to avoid empty slots
-        address[] memory exactWinners = new address[](count);
-        for (uint256 i = 0; i < count; i++) {
-            exactWinners[i] = winners[i];
-        }
-        return exactWinners;
+        
+        payable(msg.sender).transfer(withdrawAmount);
+    }
+
+    function cancelGame() external onlyOwner {
+        // do we need this? to cancel a game midway through
     }
 }
