@@ -14,7 +14,6 @@ contract DecentralizedCasino {
     event GameStarted(uint256 duration);
     event PlayerEntered(address player, uint256 guess);
     event GameEnded(uint256 winningNumber, address[] winners);
-    
     event RandomNumberGenerated(uint256 indexed randomNumber);
 
     struct Bet {
