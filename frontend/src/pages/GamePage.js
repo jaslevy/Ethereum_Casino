@@ -77,7 +77,7 @@ function GamePage() {
     
     <div className="flex flex-col items-center min-h-screen bg-white-100 mt-3">
       <NavBar />
-      <img src={Logo} alt="Group 1" className="w-2/3 md:w-1/2 lg:w-1/3 mt-20 mb-4"  /> {/* Adjust margin-top and max-width */}
+      <img src={Logo} alt="Group 1" className="w-2/3 md:w-1/2 lg:w-1/3 mt-16 mb-4"  /> {/* Adjust margin-top and max-width */}
       {/* Current Game Data Section */}
       <div className="mb-2">
         <div className="overflow-x-auto mt-5">

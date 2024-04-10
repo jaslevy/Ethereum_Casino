@@ -36,7 +36,6 @@ const NavBar = () => {
         <button className={`py-2 px-4 mx-2 text-black ${isActive('/leaderboard') ? 'font-bold' : ''} text-black bg-transparent hover:bg-gray-100 rounded text-md mb-1`}  onClick={handleLeaderboard}>Leaderboard</button>
         <button className="py-2 px-4 mx-2 text-black bg-transparent hover:bg-gray-100 rounded text-md mb-1" onClick={handleLogout}>Sign out</button>
       </div>
-     <button className={`py-2 px-4 mx-2 text-black ${isActive('/game') ? 'font-bold' : ''} text-black bg-transparent hover:bg-gray-100 rounded text-md mb-1`}  onClick={handleGame}>Game</button>
     </nav>
   );
 };
