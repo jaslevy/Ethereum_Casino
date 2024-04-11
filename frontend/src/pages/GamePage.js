@@ -3,7 +3,6 @@ import Logo from '../images/Group 1.png';
 import NavBar from '../components/NavBar';
 import './styles/GamePage.css';
 import io from 'socket.io-client';
-import { createClient } from '@supabase/supabase-js';
 
 function GamePage() {
 
@@ -81,7 +80,7 @@ function GamePage() {
       {/* Current Game Data Section */}
       <div className="mb-2">
         <div className="overflow-x-auto mt-5">
-          <table className="table-auto w-full text-center whitespace-no-wrap">
+          <table className="table-auto w-full text-center whitespace-no-wrap mb-4">
             <thead>
               <tr className="text-sm font-semibold tracking-wide text-gray-900 bg-gray-100 uppercase border-b border-gray-600">
                 <th className="px-4 py-3">Current Game Number</th>
@@ -101,22 +100,6 @@ function GamePage() {
         </div>
       </div>
 
-      
-      {/* Additional Selectable Buttons */}
-      <div className="flex justify-center gap-2 mb-4 mt-5">
-          <button
-          className={`btn shadow-lg font-bold text-white bg-green-500 rounded-2xl w-20 h-12 ${selectedButton === 'extra-1' ? 'ring-4 ring-cyan-200/100' : ''}`}
-          onClick={() => toggleOneButton('extra-1')}
-          >
-          0
-          </button>
-          <button
-          className={`btn shadow-lg font-bold text-white bg-green-500 rounded-2xl w-20 h-12 ${selectedButton === 'extra-2' ? 'ring-4 ring-cyan-200/100' : ''}`}
-          onClick={() => toggleOneButton('extra-2')}
-          >
-          00
-          </button>
-      </div>
       {/* Numbered Buttons Table */}
       <div className="grid grid-cols-12 gap-2 mb-8">
       {orderedNumbers.map((number) => {
