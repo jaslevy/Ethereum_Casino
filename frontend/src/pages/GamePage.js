@@ -179,6 +179,10 @@ function GamePage() {
         setModalMessage('No bets to withdraw.');
         setModalType('info');
         setShowModal(true);
+      } else if (error.message.includes("Too early to withdraw stake")) {
+        setModalMessage('Too early to withdraw bets.');
+        setModalType('info');
+        setShowModal(true);
       } else {
         console.error("Error withdrawing bets:", error);
         setModalMessage('Error Withdrawing Bets');
