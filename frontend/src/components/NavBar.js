@@ -32,7 +32,7 @@ const NavBar = () => {
   const handleLeaderboard = () => navigate('/leaderboard');
 
   return (
-    <nav className="flex justify-between items-center w-full p-2 bg-white shadow-md">
+    <nav className="flex justify-between items-center w-full p-2 bg-white shadow-md z-50">
       <div className="flex items-center mb-3 mx-3">
         <img src={NavLogo} alt="Logo" className="w-1/2 sm:w-1/3 md:w-1/4 lg:w-1/6 my-2 mx-3" />
         <button className={`py-2 px-4 mx-2 text-black ${isActive('/game') ? 'font-bold' : ''} text-black bg-transparent hover:bg-gray-100 rounded text-md mb-1`}  onClick={handleGame}>Game</button>
