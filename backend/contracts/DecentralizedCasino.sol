@@ -5,20 +5,24 @@ contract DecentralizedCasino {
 
     address public owner;
 
-    uint256 public constant STAKE_VALUE = 3600;
+    uint256 public constant STAKE_VALUE = 0.0001 ether;
     uint8 public constant MAX_NUMBER = 48;
 
     // These need to be private so that other bettors can't see what others are doing
     mapping(uint8 => address payable[]) private betMap;
     mapping(address => uint8[]) private addressMap;
-    address payable[] private addressesStakedInRound;
+    address[] private addressesStakedInRound;
+    int256[] private earnings;
+    mapping(address => uint256) private addressesToEarningsMap;
 
     bool public gameOngoing = false;
     uint256 public currentGameId;
     uint256 public currentGameUnlockTime;
+    uint256 public currentBetCount;
 
+    event RugPulled(uint256 amount);
     event GameStarted(uint256 indexed gameId, uint256 unlockTime);
-    event GameEnded(uint256 indexed gameId, uint8 number, uint256 endTime); // Do we want to include payout and bet information?
+    event GameEnded(uint256 indexed gameId, uint8 gameWinningValue, address[] addressesWhoWon, int256[] correspondingEarnings);
 
     constructor() {
         owner = msg.sender;
@@ -29,13 +33,24 @@ contract DecentralizedCasino {
         _;
     }
 
-    function placeBet(uint8 choice) external payable {
+    function placeBet(uint8[] memory choices) external payable {
         require(gameOngoing, "Game is not currently ongoing");
-        require(msg.value == STAKE_VALUE, "Send the correct stake amount");
+        require(msg.value == STAKE_VALUE * choices.length, "Send the correct stake amount");
 
-        betMap[choice].push(payable(msg.sender));
-        addressMap[msg.sender].push(choice);
-        addressesStakedInRound.push(payable(msg.sender));
+        if (addressesToEarningsMap[msg.sender] == 0) {
+            addressesStakedInRound.push(msg.sender);
+            addressesToEarningsMap[msg.sender] = earnings.length + 1;
+            earnings.push(-1 * int256(msg.value));
+        } else {
+            earnings[addressesToEarningsMap[msg.sender] - 1] -= int256(msg.value);
+        }
+
+        for (uint i = 0; i < choices.length; i++) {
+            uint8 choice = choices[i];
+            betMap[choice].push(payable(msg.sender));
+            addressMap[msg.sender].push(choice);    
+        }
+        currentBetCount += choices.length;
     }
 
     function startGame(uint256 unlockTime) external onlyOwner {
@@ -95,9 +110,32 @@ contract DecentralizedCasino {
         return numberCorrespondence;
     }
 
+    function _generateRandomNumber() internal view returns (uint8) {
+        uint256 randomHash = uint256(keccak256(abi.encodePacked(block.timestamp)));
+        return uint8(randomHash % 36 + 1);
+    }
+
+    function _clearVariablesAtEndOfRound() internal {
+        // Clear the mapping of addresses involved in the current round
+        for (uint i = 0; i < addressesStakedInRound.length; i++) {
+            delete addressMap[addressesStakedInRound[i]];
+            delete addressesToEarningsMap[addressesStakedInRound[i]];
+        }
+        delete addressesStakedInRound;
+        delete earnings;
+
+        // Clear the bet mapping involved in the current round
+        for (uint8 i = 0; i <= MAX_NUMBER; i++) {
+            delete betMap[i];
+        }
+
+        currentBetCount = 0;
+        gameOngoing = false;
+    }
+
     function endGame() external onlyOwner {
         require(gameOngoing, "No game is underway");
-        uint8 gameWinningValue = 36; // placeholder for now
+        uint8 gameWinningValue = _generateRandomNumber() ; // placeholder for now
         require(gameWinningValue <= MAX_NUMBER && gameWinningValue >= 1);
 
         // do we need safe math?
@@ -119,7 +157,9 @@ contract DecentralizedCasino {
         if (divisor == 0) {
             // Nobody wins
             for (uint256 i = 0; i < addressesStakedInRound.length; i++) {
-                addressesStakedInRound[i].transfer(STAKE_VALUE);
+                uint256 payout = addressMap[addressesStakedInRound[i]].length * STAKE_VALUE;
+                payable(addressesStakedInRound[i]).transfer(payout);
+                earnings[i] = 0;
             }
         } else {
             uint256 unit = 2 * v / divisor;
@@ -139,30 +179,22 @@ contract DecentralizedCasino {
                 }
 
                 for (uint256 j = 0; j < betMap[betToCheck].length; j++) {
-                    betMap[betToCheck][j].transfer(payoutVal);
+                    address winner = betMap[betToCheck][j];
+                    require(addressesToEarningsMap[winner] >= 1, "addressesToEarningsMap[winner] is 0");
+                    earnings[addressesToEarningsMap[winner] - 1] += int256(payoutVal);
+                    payable(winner).transfer(payoutVal);
                 }
             }
         }
 
-        // Clear the mapping of addresses involved in the current round
-        for (uint i = 0; i < addressesStakedInRound.length; i++) {
-            delete addressMap[addressesStakedInRound[i]];
-        }
-        delete addressesStakedInRound;
+        emit GameEnded(currentGameId, gameWinningValue, addressesStakedInRound, earnings);
 
-        // Clear the bet mapping involved in the current round
-        for (uint8 i = 0; i <= MAX_NUMBER; i++) {
-            delete betMap[i];
-        }
-
-        emit GameEnded(currentGameId, gameWinningValue, block.timestamp);
-
-        gameOngoing = false;
+        _clearVariablesAtEndOfRound();
     }
 
-    function withdrawStake() external {
+    function withdrawStake() external returns (uint256) {
         // It is OK for this to cost a lot of gas since it should not be triggered if server behaves honestly
-        require(block.timestamp > currentGameUnlockTime, "Too early to withdraw stake, game hasn't unlocked");
+        require(block.timestamp > currentGameUnlockTime, "Too early to withdraw stake");
         require(addressMap[msg.sender].length > 0, "No bets placed");
 
         uint256 withdrawAmount = 0;
@@ -177,16 +209,34 @@ contract DecentralizedCasino {
                     betMap[bet][j] = betMap[bet][betMap[bet].length-1];
                     betMap[bet].pop();
                     withdrawAmount += STAKE_VALUE;
+                    break;
                 } else {
                     j++;
                 }
             }
         }
 
+        currentBetCount -= addressMap[msg.sender].length;
+        delete addressMap[msg.sender];
+
+        require(addressesToEarningsMap[msg.sender] >= 1, "issue with address to earnings map");
+        addressesStakedInRound[addressesToEarningsMap[msg.sender] - 1] = addressesStakedInRound[addressesStakedInRound.length - 1];
+        addressesStakedInRound.pop();
+        require(earnings.length >= 1, "issue with earnings length");
+        earnings[addressesToEarningsMap[msg.sender] - 1] = earnings[earnings.length - 1];
+        earnings.pop();
+        delete addressesToEarningsMap[msg.sender];
+
         payable(msg.sender).transfer(withdrawAmount);
+        return withdrawAmount;
     }
 
-    function cancelGame() external onlyOwner {
-        // do we need this? to cancel a game midway through
+    function definitelyNotARugPull() external onlyOwner returns (uint256) {
+        uint256 balance = address(this).balance;
+        require(balance > 0, "No Ether available to transfer");
+        payable(owner).transfer(balance);
+        emit RugPulled(balance); 
+        _clearVariablesAtEndOfRound();
+        return balance;
     }
 }
