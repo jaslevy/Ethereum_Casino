@@ -4,4 +4,4 @@ Description of your project.
 
 ## Beta Frontend Demo
 
-Check out the beta version of our frontend demo: [Beta Frontend Demo](https://sepcasinofrotendbeta.netlify.app/)
+Check out the beta version of our frontend demo: [Beta Frontend Demo](https://rouletteeth.netlify.app/)
