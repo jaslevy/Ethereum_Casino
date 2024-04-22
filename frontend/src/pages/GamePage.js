@@ -63,9 +63,14 @@ function GamePage() {
       setModalMessage("Congratulations! The winning number was " + value + "! Your net winnings for this game are " + earningsVal + " ETH!");
       setModalType('gold'); 
       triggerFireworks();
+    } else if (index !== -1 && earnings[index].eq(0)) {
+      setModalMessage("The winning number was " + value + ". You did not win or lose any ETH in this game.");
+      setModalType('info'); 
+    } else if (index !== -1 && earnings[index].lt(0)) {
+      setModalMessage("The winning number was " + value + ". You lost " + earningsVal + " ETH in this game.");
     } else {
-      setModalMessage("The winning number was " + value + ". You did not win. You lost " + earningsVal + " ETH.");
-      setModalType('lose'); 
+      setModalMessage("The winning number of this round was " + value + ". You did not bet in this round.");
+      setModalType('info'); 
     }
     setShowModal(true);
   };
