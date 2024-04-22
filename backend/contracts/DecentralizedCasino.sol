@@ -5,7 +5,7 @@ contract DecentralizedCasino {
 
     address public owner;
 
-    uint256 public constant STAKE_VALUE = 1;
+    uint256 public constant STAKE_VALUE = 3600;
     uint8 public constant MAX_NUMBER = 48;
 
     // These need to be private so that other bettors can't see what others are doing
@@ -44,7 +44,7 @@ contract DecentralizedCasino {
         gameOngoing = true;
         currentGameUnlockTime = unlockTime;
         currentGameId++;
-        emit GameStarted(unlockTime, currentGameId);
+        emit GameStarted(currentGameId, unlockTime);
     }
 
     function getNumberCorrespondence(uint8 gameWinningValue, uint8 i) private pure returns (uint8) {
@@ -119,7 +119,7 @@ contract DecentralizedCasino {
         if (divisor == 0) {
             // Nobody wins
             for (uint256 i = 0; i < addressesStakedInRound.length; i++) {
-                payout(addressesStakedInRound[i], STAKE_VALUE);
+                addressesStakedInRound[i].transfer(STAKE_VALUE);
             }
         } else {
             uint256 unit = 2 * v / divisor;
@@ -133,35 +133,31 @@ contract DecentralizedCasino {
                 } else if (i == 1 || i == 5) {
                     // Correct 1/3-interval or row
                     payoutVal = 3 * v / divisor;
-                } else { //i > 3
+                } else {
                     // Correct 1/2-interval, even/odd, or red/black
                     payoutVal = unit;
                 }
 
                 for (uint256 j = 0; j < betMap[betToCheck].length; j++) {
-                    payout(betMap[betToCheck][j], payoutVal);
+                    betMap[betToCheck][j].transfer(payoutVal);
                 }
             }
-        }
-
-        emit GameEnded(currentGameId, gameWinningValue, block.timestamp);
-
-        // Clear the bet mapping involved in the current round
-        for (uint8 i = 0; i < 256; i++) {
-            delete betMap[i];
         }
 
         // Clear the mapping of addresses involved in the current round
         for (uint i = 0; i < addressesStakedInRound.length; i++) {
             delete addressMap[addressesStakedInRound[i]];
         }
-
         delete addressesStakedInRound;
-        gameOngoing = false;
-    }
 
-    function payout(address payable receiver, uint256 value) private {
-        receiver.transfer(value);
+        // Clear the bet mapping involved in the current round
+        for (uint8 i = 0; i <= MAX_NUMBER; i++) {
+            delete betMap[i];
+        }
+
+        emit GameEnded(currentGameId, gameWinningValue, block.timestamp);
+
+        gameOngoing = false;
     }
 
     function withdrawStake() external {
@@ -186,7 +182,7 @@ contract DecentralizedCasino {
                 }
             }
         }
-        
+
         payable(msg.sender).transfer(withdrawAmount);
     }
 
