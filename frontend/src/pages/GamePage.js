@@ -298,9 +298,9 @@ function GamePage() {
       <img src={Logo} alt="Group 1" className="w-2/3 md:w-1/2 lg:w-1/3 mt-16 mb-4"  /> {/* Adjust margin-top and max-width */}
       {/* Current Game Data Section */}
       <div className="mb-2">
-        <td>
-          Bet unit: {betUnit} SepoliaETH
-        </td>
+      <div className="text-center font-bold">
+        <span className="text-black">Bet unit:</span> <span className="text-blue-500">{betUnit} SepoliaETH</span>
+      </div>
         <div className="overflow-x-auto mt-5">
           <table className="table-auto w-full text-center whitespace-no-wrap mb-4">
             <thead>
@@ -416,22 +416,20 @@ function GamePage() {
         </button>
       </div>
     </div>
-    <div className="text-center mb-8 mt-8">
+    <div className="flex justify-center items-center space-x-6 mb-8 mt-8">
       <button
         className="submit-button"
         onClick={submitBet}
       >
         Submit Bet
       </button>
-  </div>
-  <div>
-    <button
+      <button
         className="submit-button"
         onClick={withdrawBets}
       >
         Withdraw Bets
-    </button>
-  </div>
+      </button>
+    </div>
   {isLoading && (
       <div className="fixed top-0 left-0 right-0 bottom-0 flex justify-center items-center bg-black bg-opacity-50 z-50">
         {/* This overlay and the LoadingIcons.Bars will not be blurred */}

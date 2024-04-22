@@ -2,7 +2,7 @@ import React from 'react';
 
 function Modal({ message, type, onClose }) {
   const icon = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'lose' ? '😞' : type === 'haha' ? '😂' : null;
-  const overlayClasses = "fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center";
+  const overlayClasses = "fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center z-50";
   const modalBoxClasses = type === 'error' ? 'bg-red-100' : type === 'success' ? 'bg-green-100' : type === 'gold' ? 'bg-yellow-500' : type === 'haha' ? 'bg-orange-400' : 'bg-white';
   const modalContentClasses = `${modalBoxClasses} p-5 z-50 shadow-lg rounded-md max-w-sm mx-auto`;
 
