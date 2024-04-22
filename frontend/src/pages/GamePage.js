@@ -1,8 +1,12 @@
-import { React, useState, useEffect } from 'react';
+import { React, useState, useEffect, useMemo } from 'react';
 import Logo from '../images/Group 1.png';
 import NavBar from '../components/NavBar';
 import './styles/GamePage.css';
-import io from 'socket.io-client';
+import { ethers } from 'ethers';
+import LoadingIcons from 'react-loading-icons';
+import Modal from '../components/Modal';
+import confetti from 'canvas-confetti';
+
 
 function GamePage() {
 
@@ -13,6 +17,135 @@ function GamePage() {
 
   const [selectedButton, setSelectedButton] = useState(null);
   const [selectedButtons, setSelectedButtons] = useState([]);
+
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
+  const [modalType, setModalType] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  
+
+
+  const contractAddress = "0xAc4B4762Ae86053D5317b4b546Ab6fAbfBC6224f";
+  const contractABI = useMemo(() => [
+    {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"gameId","type":"uint256"},{"indexed":false,"internalType":"uint8","name":"number","type":"uint8"},{"indexed":false,"internalType":"uint256","name":"endTime","type":"uint256"}],"name":"GameEnded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint256","name":"gameId","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"unlockTime","type":"uint256"}],"name":"GameStarted","type":"event"},{"inputs":[],"name":"MAX_NUMBER","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"STAKE_VALUE","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"cancelGame","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"currentGameId","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"currentGameUnlockTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"endGame","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"gameOngoing","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint8","name":"choice","type":"uint8"}],"name":"placeBet","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"uint256","name":"unlockTime","type":"uint256"}],"name":"startGame","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"withdrawStake","outputs":[],"stateMutability":"nonpayable","type":"function"}
+  ], []);
+
+// eslint-disable-next-line no-unused-vars
+  const triggerFireworks = () => {
+    var end = Date.now() + (5 * 1000);
+  
+    // Go for 15 seconds
+    var interval = setInterval(function() {
+      if (Date.now() > end) {
+        return clearInterval(interval);
+      }
+  
+      // Call confetti with various options
+      confetti({
+        startVelocity: 30,
+        spread: 360,
+        ticks: 60,
+        shapes: ['square', 'circle'],
+        origin: {
+          x: Math.random(),
+          // since they fall down, start a bit higher than random
+          y: Math.random() - 0.2
+        }
+      });
+    }, 200); // Launch every 200 milliseconds
+  };
+
+  const checkEarnings = async (addresses, earnings, triggerFireworks) => {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    const userAddress = await signer.getAddress();
+  
+    const index = addresses.findIndex(address => address.toLowerCase() === userAddress.toLowerCase());
+    if (index !== -1 && earnings[index].gt(0)) { // Using BigNumber comparison
+      // User has positive earnings
+      setModalMessage("Congratulations!!!! You Win");
+      setModalType('gold'); 
+      triggerFireworks();
+    } else {
+      setModalMessage("You Lost.");
+      setModalType('lose'); 
+    }
+    setShowModal(true);
+  };
+
+
+
+  useEffect(() => {
+    let contract;
+    const setupEventListener = async () => {
+      if (window.ethereum) {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        contract = new ethers.Contract(contractAddress, contractABI, signer);
+  
+        contract.on("GameEnded", (addresses, earnings) => {
+          checkEarnings(addresses, earnings);
+        });
+
+        // contract.on("rugPulled", () => {
+        //   setModalMessage("You have been fooled");
+        //   setModalType('haha'); // Use 'info' or another suitable identifier for this case
+        //   setShowModal(true);
+        // });
+      }
+    };
+  
+    setupEventListener();
+  
+    // Cleanup function to remove listener when component unmounts
+    return () => {
+      if (contract) {
+        contract.removeAllListeners("GameEnded");
+      }
+    };
+  }, [contractAddress, contractABI]); 
+  
+
+  const submitBet = async () => {
+    if (selectedButton === null) {
+      setModalMessage("Please select a number to bet on.");
+      setModalType('info'); // Use 'info' or another suitable identifier for this case
+      setShowModal(true);
+      // triggerFireworks(); FOR TESTING
+      return;
+    }
+  
+    if (!window.ethereum) {
+      alert("Please install MetaMask to proceed.");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await window.ethereum.request({ method: 'eth_requestAccounts' });
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      // Since STAKE_VALUE is 3600 wei, use it directly without conversion
+      const transactionResponse = await contract.placeBet(selectedButton, { value: "3600" });
+      await transactionResponse.wait(); // Wait for the transaction to be mined
+    } catch (error) {
+      console.error("Error submitting bet:", error);
+      if (error.message.includes('execution reverted: Game is not currently ongoing')) {
+        setModalMessage('Cannot submit bet because game has not started.');
+      } else {
+        setModalMessage('Error Submitting Bet');
+      }
+      setModalType('error');
+      setShowModal(true);
+    }  finally {
+      setIsLoading(false); // End loading
+      setModalMessage('Bet placed successfully!');
+      setModalType('success');
+      setShowModal(true);
+    }
+  };
+
+
   const generateOrderedNumbers = () => {
     let numbers = Array.from({ length: 36 }, (_, i) => i + 1);
     let orderedNumbers = new Array(36);
@@ -39,42 +172,11 @@ function GamePage() {
 
   const isButtonSelected = (buttonId) => selectedButtons.includes(buttonId);
   
-  const [countdown, setCountdown] = useState(120);
 
-  useEffect(() => {
-    const socket = io('http://localhost:3000'); // Use your backend server URL here
-    socket.on('welcome', (message) => {
-      console.log(message);
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
-
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCountdown((prevCountdown) => {
-        if (prevCountdown > 0) return prevCountdown - 1;
-        return 120; // Reset to 2 minutes after reaching 0
-      });
-    }, 1000); // Update every second
-
-    // Pause for 5 seconds at 0 before resetting
-    if (countdown === 0) {
-      clearInterval(interval); // Stop the countdown
-      setTimeout(() => {
-        setCountdown(120); // Reset to 2 minutes after a 5-second pause
-      }, 5000); // 5-second pause
-    }
-
-    return () => clearInterval(interval); // Cleanup interval on component unmount
-  }, [countdown]);
 
   return (
     
-    <div className="flex flex-col items-center min-h-screen bg-white-100 mt-3">
+    <div className={`flex flex-col items-center min-h-screen bg-white-100 mt-3 ${isLoading ? 'blur-sm' : ''}`}>
       <NavBar />
       <img src={Logo} alt="Group 1" className="w-2/3 md:w-1/2 lg:w-1/3 mt-16 mb-4"  /> {/* Adjust margin-top and max-width */}
       {/* Current Game Data Section */}
@@ -193,12 +295,22 @@ function GamePage() {
     <div className="text-center mb-8 mt-8">
       <button
         className="submit-button"
-        onClick={() => {/* Handle submit bet logic here */}}
+        onClick={submitBet}
       >
         Submit Bet
       </button>
   </div>
-    
+  {isLoading && (
+      <div className="fixed top-0 left-0 right-0 bottom-0 flex justify-center items-center bg-black bg-opacity-50 z-50">
+        {/* This overlay and the LoadingIcons.Bars will not be blurred */}
+        <LoadingIcons.Circles className="text-white" />
+      </div>
+    )}
+  {showModal && <Modal 
+          message={modalMessage} 
+          type={modalType} 
+          onClose={() => setShowModal(false)} 
+        />}
   </div>
   
 
