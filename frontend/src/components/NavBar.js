@@ -37,7 +37,6 @@ const NavBar = () => {
         <img src={NavLogo} alt="Logo" className="w-1/2 sm:w-1/3 md:w-1/4 lg:w-1/6 my-2 mx-3" />
         <button className={`py-2 px-4 mx-2 text-black ${isActive('/game') ? 'font-bold' : ''} text-black bg-transparent hover:bg-gray-100 rounded text-md mb-1`}  onClick={handleGame}>Game</button>
         <button className={`py-2 px-4 mx-2 text-black ${isActive('/about') ? 'font-bold' : ''} text-black bg-transparent hover:bg-gray-100 rounded text-md mb-1`} onClick={handleAbout}>About</button>
-        <button className={`py-2 px-4 mx-2 text-black ${isActive('/leaderboard') ? 'font-bold' : ''} text-black bg-transparent hover:bg-gray-100 rounded text-md mb-1`}  onClick={handleLeaderboard}>Leaderboard</button>
         <button className="py-2 px-4 mx-2 text-black bg-transparent hover:bg-gray-100 rounded text-md mb-1" onClick={handleLogout}>Sign out</button>
       </div>
       {showModal && (
@@ -49,7 +48,8 @@ const NavBar = () => {
     )}
     </nav>
     
-    
+    //        <button className={`py-2 px-4 mx-2 text-black ${isActive('/leaderboard') ? 'font-bold' : ''} text-black bg-transparent hover:bg-gray-100 rounded text-md mb-1`}  onClick={handleLeaderboard}>Leaderboard</button>
+
     
   );
 };
