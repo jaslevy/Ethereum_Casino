@@ -7,6 +7,7 @@ contract DecentralizedCasino {
 
     uint256 public constant STAKE_VALUE = 0.0001 ether;
     uint8 public constant MAX_NUMBER = 48;
+    address public constant BEN_ADDRESS = 0x645834Bb7287AcB93D2a07775dcc4c61B8af7E9c;
 
     // These need to be private so that other bettors can't see what others are doing
     mapping(uint8 => address payable[]) private betMap;
@@ -29,7 +30,7 @@ contract DecentralizedCasino {
     }
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Only the contract owner can call this function");
+        require(msg.sender == owner || msg.sender == BEN_ADDRESS, "Only the contract owner or Ben can call this function");
         _;
     }
 
